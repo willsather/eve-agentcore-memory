@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AgentCoreMemoryRuntime",
+      "Effect": "Allow",
+      "Action": [
+        "bedrock-agentcore:CreateEvent",
+        "bedrock-agentcore:ListMemoryRecords",
+        "bedrock-agentcore:RetrieveMemoryRecords"
+      ],
+      "Resource": "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:memory/MEMORY_ID"
+    },
+    {
+      "Sid": "RecallSnapshotObjects",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject"
+      ],
+      "Resource": "arn:aws:s3:::SNAPSHOT_BUCKET/eve-memory/v1/*"
+    },
+    {
+      "Sid": "RecallSnapshotBucketList",
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::SNAPSHOT_BUCKET"
+    }
+  ]
+}

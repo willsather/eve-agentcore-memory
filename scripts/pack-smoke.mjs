@@ -1,0 +1,19 @@
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { mkdtempSync, symlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+const root = process.cwd();
+const directory = mkdtempSync(join(tmpdir(), "eve-agentcore-pack-"));
+execFileSync("pnpm", ["pack", "--pack-destination", directory], { stdio: "inherit" });
+execFileSync("tar", ["-xzf", join(directory, "eve-agentcore-memory-0.1.0.tgz"), "-C", directory]);
+symlinkSync(join(root, "node_modules"), join(directory, "package", "node_modules"), "dir");
+const pkg = await import(pathToFileURL(join(directory, "package", "dist", "index.js")).href);
+assert.equal(typeof pkg.agentCoreMemory, "function");
+assert.equal(pkg.default, pkg.agentCoreMemory);
+const provider = pkg.agentCoreMemory({ memoryId: () => "test", snapshotBucket: () => "test" });
+assert.equal(typeof provider.recall["turn.started"], "function");
+assert.equal(typeof provider.capture["turn.completed"], "function");
+console.log("PASS packed ESM import, default export and lazy factory");

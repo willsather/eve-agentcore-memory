@@ -1,0 +1,33 @@
+{
+  "name": "eve-agentcore-memory",
+  "version": "0.1.0",
+  "description": "Amazon Bedrock AgentCore Memory provider for Eve agents",
+  "type": "module",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/willsather/eve-agentcore-memory.git" },
+  "files": ["dist", "README.md", "LICENSE"],
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "engines": { "node": ">=24" },
+  "packageManager": "pnpm@12.9.1",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "create-memory": "tsx scripts/create-memory.ts",
+    "live-smoke": "tsx scripts/live-smoke.ts",
+    "pack-smoke": "node scripts/pack-smoke.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-bedrock-agentcore": "3.1146.0",
+    "@aws-sdk/client-s3": "3.1146.0",
+    "zod": "4.1.12"
+  },
+  "peerDependencies": { "eve": ">=0.71.3 <1" },
+  "devDependencies": {
+    "@aws-sdk/client-bedrock-agentcore-control": "3.1146.0",
+    "@types/node": "^24.0.0",
+    "eve": "0.71.3",
+    "tsx": "4.20.6",
+    "typescript": "5.9.3"
+  }
+}
