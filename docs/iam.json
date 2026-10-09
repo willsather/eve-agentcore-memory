@@ -7,7 +7,10 @@
       "Action": [
         "bedrock-agentcore:CreateEvent",
         "bedrock-agentcore:ListMemoryRecords",
-        "bedrock-agentcore:RetrieveMemoryRecords"
+        "bedrock-agentcore:RetrieveMemoryRecords",
+        "bedrock-agentcore:BatchCreateMemoryRecords",
+        "bedrock-agentcore:GetMemoryRecord",
+        "bedrock-agentcore:DeleteMemoryRecord"
       ],
       "Resource": "arn:aws:bedrock-agentcore:REGION:ACCOUNT_ID:memory/MEMORY_ID"
     },

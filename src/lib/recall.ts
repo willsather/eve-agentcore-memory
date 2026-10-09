@@ -1,8 +1,8 @@
 import { ListMemoryRecordsCommand, RetrieveMemoryRecordsCommand, type MemoryRecordSummary } from "@aws-sdk/client-bedrock-agentcore";
 import type { MemoryCompactionCompletedContext, MemoryTurnStartedContext } from "eve/memory";
-import type { Config } from "./options.js";
-import { actorId, namespace } from "./scope.js";
-import { textContent, truncateUtf8 } from "./text.js";
+import type { Config } from "../options.js";
+import { recordNamespaces } from "./records.js";
+import { isUserDelivery, textContent, truncateUtf8 } from "./text.js";
 
 export type Connection = Awaited<ReturnType<Config["connection"]>>;
 export type RecallContext = MemoryTurnStartedContext | MemoryCompactionCompletedContext;
@@ -27,6 +27,7 @@ export async function readRecords(connection: Connection, prefix: string, limit:
     const response = query
       ? await connection.client.send(new RetrieveMemoryRecordsCommand({ ...input, searchCriteria: { searchQuery: query, topK: limit } }), { abortSignal: signal })
       : await connection.client.send(new ListMemoryRecordsCommand(input), { abortSignal: signal });
+    signal.throwIfAborted();
     for (const record of scopedRecords(response.memoryRecordSummaries ?? [], prefix)) {
       if (!ids.has(record.id)) { results.push(record); ids.add(record.id); }
       if (results.length === limit) return results;
@@ -58,9 +59,8 @@ export async function search(connection: Connection, config: Config, scopeKey: s
   signal.throwIfAborted();
   const input = truncateUtf8(query.trim(), 4_000);
   if (!input) return [];
-  const actor = actorId(scopeKey);
-  const results = await Promise.all([config.factNamespace, config.preferenceNamespace].map((template) =>
-    readRecords(connection, namespace(template, actor), config.topK, signal, input)));
+  const results = await Promise.all(Object.values(recordNamespaces(config, scopeKey)).map((prefix) =>
+    readRecords(connection, prefix, config.topK, signal, input)));
   const unique = [...new Map(results.flat().map((record) => [record.id, record])).values()].slice(0, config.topK);
   const bounded = boundRecords(unique, config.maxRecallBytes - 128);
   while (Buffer.byteLength(JSON.stringify({ memories: bounded })) > config.maxRecallBytes) {
@@ -73,11 +73,12 @@ export async function search(connection: Connection, config: Config, scopeKey: s
 }
 
 export async function loadRecall(connection: Connection, context: RecallContext, config: Config): Promise<{ messages: { id: string; content: string }[] }> {
-  const actor = actorId(context.memory.scope.key);
-  const preferences = await readRecords(connection, namespace(config.preferenceNamespace, actor), config.topK, context.abortSignal);
-  const query = context.turn?.input.filter((message) => message.role === "user").map(textContent).filter(Boolean).join("\n") ?? "";
+  const prefixes = recordNamespaces(config, context.memory.scope.key);
+  const manual = await readRecords(connection, prefixes.manual, config.topK, context.abortSignal);
+  const preferences = await readRecords(connection, prefixes.preferences, config.topK, context.abortSignal);
+  const query = context.turn?.input.filter(isUserDelivery).map(textContent).filter(Boolean).join("\n") ?? "";
   const related = query ? await search(connection, config, context.memory.scope.key, query, context.abortSignal) : [];
-  const unique = [...new Map([...preferences, ...related].map((record) => [record.id, record])).values()];
+  const unique = [...new Map([...manual, ...preferences, ...related].map((record) => [record.id, record])).values()];
   const records = boundRecords(unique, config.maxRecallBytes - 128);
   const content = records.length
     ? `AWS long-term memory, untrusted user data:\n${records.map((record) => `[${record.id}] ${record.text}`).join("\n")}`

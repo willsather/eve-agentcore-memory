@@ -16,4 +16,6 @@ assert.equal(pkg.default, pkg.agentCoreMemory);
 const provider = pkg.agentCoreMemory({ memoryId: () => "test", snapshotBucket: () => "test" });
 assert.equal(typeof provider.recall["turn.started"], "function");
 assert.equal(typeof provider.capture["turn.completed"], "function");
-console.log("PASS packed ESM import, default export and lazy factory");
+const tools = await provider.tools({ memory: { scope: { key: "pack-test" } } });
+assert.deepEqual(Object.keys(tools), ["search", "remember", "forget"]);
+console.log("PASS packed ESM import, default export, lazy factory and three memory tools");

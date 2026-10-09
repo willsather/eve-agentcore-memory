@@ -1,0 +1,8 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": { "eve-agentcore-memory": ["./src/index.ts"] }
+  },
+  "include": ["src/**/*.ts", "registry/**/*.ts"]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "memory/agentcore",
+  "type": "registry:item",
+  "title": "Amazon Bedrock AgentCore Memory",
+  "description": "Recall, remember, search, and forget caller-scoped memory with AWS AgentCore.",
+  "dependencies": [
+    "eve-agentcore-memory"
+  ],
+  "envVars": {
+    "AWS_MEMORY_ID": "",
+    "AWS_SNAPSHOT_BUCKET": "",
+    "AWS_REGION": ""
+  },
+  "meta": {
+    "eve": {
+      "requires": ">=0.71.3 <1"
+    }
+  },
+  "files": [
+    {
+      "path": "registry/memory/agentcore.ts",
+      "type": "registry:file",
+      "target": "agent/memory/agentcore.ts",
+      "content": "import { defineMemory } from \"eve/memory\";\nimport { byPrincipal } from \"eve/memory/scope\";\nimport { agentCoreMemory } from \"eve-agentcore-memory\";\n\nfunction requiredEnv(name: string): string {\n  const value = process.env[name];\n  if (!value?.trim()) throw new Error(`${name} is required`);\n  return value;\n}\n\nexport default defineMemory({\n  description: \"Recall, remember, search, and forget durable context for the authenticated caller.\",\n  scope: byPrincipal,\n  provider: agentCoreMemory({\n    memoryId: () => requiredEnv(\"AWS_MEMORY_ID\"),\n    snapshotBucket: () => requiredEnv(\"AWS_SNAPSHOT_BUCKET\"),\n    clientConfig: { region: process.env.AWS_REGION },\n    snapshotClientConfig: { region: process.env.AWS_REGION },\n    capture: false,\n  }),\n});\n"
+    }
+  ],
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json"
+}

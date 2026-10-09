@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { CreateEventCommand } from "@aws-sdk/client-bedrock-agentcore";
 import { context, mockClient } from "./helpers.js";
-import { capture } from "../src/capture.js";
+import { capture } from "../src/lib/capture.js";
 import { resolveOptions } from "../src/options.js";
-import { actorId, namespace, sessionId } from "../src/scope.js";
-import { splitUtf8, truncateUtf8 } from "../src/text.js";
+import { actorId, namespace, sessionId } from "../src/lib/scope.js";
+import { splitUtf8, truncateUtf8 } from "../src/lib/text.js";
 
 test("capture uses only new user text and repeatable tokens", async () => {
   const requests: CreateEventCommand[] = [];
@@ -89,6 +89,50 @@ test("capture retry tokens suppress duplicate events in a token-aware AWS mock",
   assert.equal(events.size, 1);
   await capture(context({ operationId: "next-operation" }), config);
   assert.equal(events.size, 2);
+});
+
+test("capture skips turns handled by remember or forget tools", async () => {
+  for (const toolName of ["aws__remember", "aws__forget"]) {
+    const ctx = context({ messages: [
+      { role: "user", content: "Remember or forget this preference" },
+      { role: "assistant", content: [{ type: "tool-call", toolCallId: "call-1", toolName, input: { content: "synthetic" } }] },
+    ] });
+    await capture(ctx, resolveOptions({ memoryId() { throw new Error("must not ingest mutation turns"); } }));
+  }
+});
+
+test("framework-authored turn input is never captured as user text", async () => {
+  for (const kind of ["task.result", "execution.continuation", "memory.load"]) {
+    const turn = { id: "framework-turn", sequence: 2, input: [{ role: "user", kind, content: "framework data" }] } as unknown as ReturnType<typeof context>["turn"];
+    await capture(context({ turn }), resolveOptions({ memoryId() { throw new Error("framework data must not be ingested"); } }));
+  }
+});
+
+test("framework user-role messages after a mutation do not re-enable capture", async () => {
+  for (const toolName of ["aws__remember", "aws__forget"]) {
+    for (const kind of ["execution.continuation", "execution.retry", "context.compaction", "memory.load", "context.state", "context.instruction", "task.result"]) {
+      const messages = [
+        { role: "user", kind: "user", content: "manage my preference" },
+        { role: "assistant", content: [{ type: "tool-call", toolCallId: "call-1", toolName, input: {} }] },
+        { role: "user", kind, content: "Continue." },
+      ] as unknown as ReturnType<typeof context>["messages"];
+      await capture(context({ messages }), resolveOptions({ memoryId() { throw new Error(`framework ${kind} must not re-enable capture`); } }));
+    }
+  }
+});
+
+test("past mutations and other slots do not disable capture for a new turn", async () => {
+  for (const toolName of ["aws__remember", "other__forget"]) {
+    let calls = 0;
+    const ctx = context({ messages: [
+      { role: "user", content: "old input" },
+      { role: "assistant", content: [{ type: "tool-call", toolCallId: "old-call", toolName, input: {} }] },
+      { role: "user", content: "I prefer TypeScript." },
+      { role: "assistant", content: "acknowledged" },
+    ] });
+    await capture(ctx, resolveOptions({ memoryId: "test", client: mockClient(async () => { calls++; return {}; }) }));
+    assert.equal(calls, 1);
+  }
 });
 
 test("empty input performs no request or credential resolution", async () => {

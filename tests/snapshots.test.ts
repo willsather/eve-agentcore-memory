@@ -3,7 +3,7 @@ import { Readable } from "node:stream";
 import { test } from "node:test";
 import { GetObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { resolveOptions } from "../src/options.js";
-import { createSnapshots } from "../src/snapshots.js";
+import { createSnapshots } from "../src/lib/snapshots.js";
 import { context, mockClient, snapshotStore } from "./helpers.js";
 
 const result = { messages: [{ id: "context", content: "a synthetic preference" }] };

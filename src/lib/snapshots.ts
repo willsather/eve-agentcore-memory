@@ -1,6 +1,6 @@
 import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { z } from "zod";
-import type { Config } from "./options.js";
+import type { Config } from "../options.js";
 import type { Connection, RecallContext } from "./recall.js";
 import { actorId, digest } from "./scope.js";
 

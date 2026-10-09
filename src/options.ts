@@ -11,6 +11,7 @@ export interface AgentCoreMemoryOptions {
   snapshotClientConfig?: S3ClientConfig;
   factNamespace?: string;
   preferenceNamespace?: string;
+  manualNamespace?: string;
   topK?: number;
   maxRecallBytes?: number;
   maxCaptureBytes?: number;
@@ -27,6 +28,7 @@ const template = z.string().max(900).refine((value) => {
 const schema = z.object({
   factNamespace: template.default("/eve/actors/{actorId}/facts/"),
   preferenceNamespace: template.default("/eve/actors/{actorId}/preferences/"),
+  manualNamespace: template.default("/eve/actors/{actorId}/manual/"),
   topK: z.number().int().min(1).max(20).default(5),
   maxRecallBytes: z.number().int().min(256).max(32_000).default(12_000),
   maxCaptureBytes: z.number().int().min(1).max(1_000_000).default(200_000),
@@ -38,10 +40,13 @@ export function resolveOptions(options: AgentCoreMemoryOptions) {
     throw new Error("memoryId must be a nonempty string or lazy resolver.");
   }
   const config = schema.parse(options);
-  const facts = config.factNamespace.replace("{actorId}", "actor");
-  const preferences = config.preferenceNamespace.replace("{actorId}", "actor");
-  if (facts.startsWith(preferences) || preferences.startsWith(facts)) {
-    throw new Error("Fact and preference namespaces must not overlap.");
+  const namespaces = [config.factNamespace, config.preferenceNamespace, config.manualNamespace].map((value) => value.replace("{actorId}", "actor"));
+  for (let index = 0; index < namespaces.length; index++) {
+    for (const other of namespaces.slice(index + 1)) {
+      if (namespaces[index]!.startsWith(other) || other.startsWith(namespaces[index]!)) {
+        throw new Error("Fact, preference and manual namespaces must not overlap.");
+      }
+    }
   }
   let client = options.client;
   return {

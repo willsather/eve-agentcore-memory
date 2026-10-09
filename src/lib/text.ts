@@ -2,6 +2,11 @@ import type { MemoryTurnCompletedContext } from "eve/memory";
 
 type Message = MemoryTurnCompletedContext["messages"][number];
 
+export function isUserDelivery(message: Message): boolean {
+  // eve's compaction, memory and continuation messages also use the user role
+  return message.role === "user" && (!("kind" in message) || message.kind === "user");
+}
+
 export function textContent(message: Message): string {
   if (typeof message.content === "string") return message.content.trim();
   return message.content

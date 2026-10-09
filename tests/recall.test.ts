@@ -4,9 +4,9 @@ import { ListMemoryRecordsCommand, RetrieveMemoryRecordsCommand, type MemoryReco
 import type { MemoryCompactionCompletedContext, MemoryToolsContext, MemoryTurnStartedContext } from "eve/memory";
 import { agentCoreMemory } from "../src/index.js";
 import { resolveOptions } from "../src/options.js";
-import { actorId } from "../src/scope.js";
-import { boundRecords, readRecords, search } from "../src/recall.js";
-import { createSnapshots } from "../src/snapshots.js";
+import { actorId } from "../src/lib/scope.js";
+import { boundRecords, readRecords, search } from "../src/lib/recall.js";
+import { createSnapshots } from "../src/lib/snapshots.js";
 import { context, mockClient, snapshotStore } from "./helpers.js";
 
 function record(prefix: string, id = "fact-1", text = "Prefers TypeScript"): MemoryRecordSummary {
@@ -150,7 +150,7 @@ test("corrupt snapshots fail closed without searching again", async () => {
 test("provider construction and tool resolution are lazy and capture can be disabled", async () => {
   const provider = agentCoreMemory({ memoryId() { throw new Error("runtime only"); }, capture: false });
   assert.equal(provider.capture, undefined);
-  assert.deepEqual(Object.keys((await provider.tools!({ memory: context().memory } as MemoryToolsContext))!), ["search"]);
+  assert.deepEqual(Object.keys((await provider.tools!({ memory: context().memory } as MemoryToolsContext))!), ["search", "remember", "forget"]);
 });
 
 test("search tool closes over scope and propagates its execution abort signal", async () => {
